@@ -4,3 +4,22 @@
 [Bb]uild/
 [Ll]ogs/
 UserSettings/
+
+*.csproj
+*.sln
+.vs/
+.vscode/
+
+# Unity cache khác
+MemoryCaptures/
+Recordings/
+
+# OS rác
+.DS_Store
+Thumbs.db
+
+# Rider / JetBrains (nếu dùng sau này)
+.idea/
+
+# Build output (bạn đã có nhưng thêm cho chắc)
+Builds/
