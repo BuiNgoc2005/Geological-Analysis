@@ -2,44 +2,146 @@ using UnityEngine;
 
 public class PlayerInteract : MonoBehaviour
 {
-    [Header("Cài đặt Tương tác")]
-    public Camera playerCamera; 
-    public float interactDistance = 3f; // Khoảng cách tay với tới máy
+    [Header("Cài đặt tương tác")]
+    public float interactDistance = 3f;
+    public Camera playerCamera;
+
+    [Header("Kho đồ (Holder)")]
+    public Transform holder;
+
+    // Đổi sang public để các Script khác (như JawCrusherMachine) có thể kiểm tra
+    public GameObject currentHandObject = null;
+    public GameObject currentWorldPrefab = null;
+
+    void Start()
+    {
+        // Tắt tất cả đồ trong tay khi bắt đầu
+        foreach (Transform child in holder) child.gameObject.SetActive(false);
+        currentHandObject = null;
+        currentWorldPrefab = null;
+    }
 
     void Update()
     {
-        // Khi nhấn phím E
         if (Input.GetKeyDown(KeyCode.E))
         {
-            TryInteract();
+            PerformInteract();
         }
     }
 
-    void TryInteract()
+    void PerformInteract()
     {
-        // Bắn tia Raycast từ vị trí camera, hướng thẳng về phía trước
         Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
         RaycastHit hit;
 
-        // Nếu tia đụng trúng vật thể trong cự ly cho phép
         if (Physics.Raycast(ray, out hit, interactDistance))
         {
-            // Kiểm tra xem vật thể đó có dán Tag "Machine" không
-            if (hit.collider.CompareTag("DiscMill"))
+            // 1. Tương tác với Nút bấm (Start/Stop)
+            if (hit.collider.CompareTag("MachineButton"))
             {
-                // Tìm component Animator trên cái máy đó (hoặc cha của nó)
-                Animator machineAnim = hit.collider.GetComponentInParent<Animator>();
+                JawCrusherMachine machine = hit.collider.GetComponentInParent<JawCrusherMachine>();
+                if (machine != null) machine.ToggleMachine(hit.collider.gameObject.name);
+                return; // Xử lý xong nút bấm thì dừng
+            }
 
-                if (machineAnim != null)
+            // 2. Tương tác với Máy nghiền (Thân máy)
+            if (hit.collider.CompareTag("JawCrusher"))
+            {
+                JawCrusherMachine machine = hit.collider.GetComponent<JawCrusherMachine>();
+                if (machine != null)
                 {
-                    // Lấy trạng thái hiện tại và đảo ngược nó (đang đóng -> mở, đang mở -> đóng)
-                    bool isCurrentlyOpen = machineAnim.GetBool("isOpen");
-                    machineAnim.SetBool("isOpen", !isCurrentlyOpen);
+                    machine.InteractWithMachine(this);
+                    return;
                 }
-                else
+            }
+
+            // 3. Tương tác với đồ vật để nhặt (PickupItem)
+            if (hit.collider.CompareTag("PickupItem"))
+            {
+                ItemInfo itemInfo = hit.collider.GetComponent<ItemInfo>();
+                if (itemInfo != null)
                 {
-                    Debug.LogWarning("Máy có Tag Machine nhưng không tìm thấy Animator!");
+                    if (currentHandObject == null) PickUpItem(hit.collider.gameObject, itemInfo);
+                    else SwapItem(hit.collider.gameObject, itemInfo);
                 }
+                return;
+            }
+
+            // 4. Tương tác với bàn để đặt đồ
+            if (hit.collider.CompareTag("Table") && currentHandObject != null)
+            {
+                PlaceItemOnTable(hit.point);
+                return;
+            }
+        }
+
+        // 5. Nếu bấm E vào không trung hoặc chỗ không có tag đặc biệt thì Vứt đồ
+        if (currentHandObject != null)
+        {
+            DropItem();
+        }
+    }
+
+    // --- CÁC HÀM HỖ TRỢ ---
+
+    public void PickUpItem(GameObject worldObject, ItemInfo targetInfo)
+    {
+        Destroy(worldObject);
+        EquipHandItem(targetInfo.itemType);
+    }
+
+    void SwapItem(GameObject worldObject, ItemInfo targetInfo)
+    {
+        Vector3 oldPos = worldObject.transform.position;
+        Quaternion oldRot = worldObject.transform.rotation;
+        
+        // Vứt món đồ cũ ra
+        Instantiate(currentWorldPrefab, oldPos, oldRot);
+        
+        // Hủy vật thể trên sàn và cầm món mới lên
+        Destroy(worldObject);
+        EquipHandItem(targetInfo.itemType);
+    }
+
+    public void DropItem()
+    {
+        if (currentHandObject == null) return;
+
+        Vector3 dropPosition = playerCamera.transform.position + playerCamera.transform.forward * 1.5f;
+        Instantiate(currentWorldPrefab, dropPosition, playerCamera.transform.rotation);
+        
+        ClearHand();
+    }
+
+    public void ClearHand()
+    {
+        if (currentHandObject != null) currentHandObject.SetActive(false);
+        currentHandObject = null;
+        currentWorldPrefab = null;
+    }
+
+    void PlaceItemOnTable(Vector3 hitPoint)
+    {
+        // Sửa 0.05f thành 0.01f hoặc thậm chí là 0 để sát mặt bàn nhất có thể
+        Vector3 placePos = hitPoint + new Vector3(0, 0.01f, 0); 
+        Instantiate(currentWorldPrefab, placePos, Quaternion.identity);
+        ClearHand();
+    }
+
+    public void EquipHandItem(ItemType type)
+    {
+        // Tắt món đồ cũ (nếu có)
+        if (currentHandObject != null) currentHandObject.SetActive(false);
+
+        foreach (Transform handItem in holder)
+        {
+            ItemInfo handInfo = handItem.GetComponent<ItemInfo>();
+            if (handInfo != null && handInfo.itemType == type)
+            {
+                handItem.gameObject.SetActive(true);
+                currentHandObject = handItem.gameObject;
+                currentWorldPrefab = handInfo.worldPrefab;
+                break;
             }
         }
     }

@@ -5,6 +5,11 @@ TagManager:
   serializedVersion: 3
   tags:
   - DiscMill
+  - Granite
+  - PickupItem
+  - Table
+  - JawCrusher
+  - MachineButton
   layers:
   - Default
   - TransparentFX
