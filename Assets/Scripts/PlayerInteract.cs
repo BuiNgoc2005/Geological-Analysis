@@ -55,6 +55,16 @@ public class PlayerInteract : MonoBehaviour
                 }
             }
 
+            if (hit.collider.CompareTag("DiscMill"))
+            {
+                DiscMillMachine discMachine = hit.collider.GetComponent<DiscMillMachine>();
+                if (discMachine != null)
+                {
+                    discMachine.InteractWithMachine(this);
+                    return;
+                }
+            }
+
             // 3. Tương tác với đồ vật để nhặt (PickupItem)
             if (hit.collider.CompareTag("PickupItem"))
             {
@@ -107,6 +117,12 @@ public class PlayerInteract : MonoBehaviour
     {
         if (currentHandObject == null) return;
 
+        if (currentWorldPrefab == null) {
+            Debug.LogWarning("Không thể vứt đồ: currentWorldPrefab là null!");
+            ClearHand(); // Vẫn xóa đồ trên tay để tránh bị kẹt
+            return;
+        }
+
         Vector3 dropPosition = playerCamera.transform.position + playerCamera.transform.forward * 1.5f;
         Instantiate(currentWorldPrefab, dropPosition, playerCamera.transform.rotation);
         
@@ -122,6 +138,11 @@ public class PlayerInteract : MonoBehaviour
 
     void PlaceItemOnTable(Vector3 hitPoint)
     {
+        if (currentWorldPrefab == null) {
+            Debug.LogWarning("Không thể đặt đồ lên bàn: currentWorldPrefab là null!");
+            return;
+        }
+        
         // Sửa 0.05f thành 0.01f hoặc thậm chí là 0 để sát mặt bàn nhất có thể
         Vector3 placePos = hitPoint + new Vector3(0, 0.01f, 0); 
         Instantiate(currentWorldPrefab, placePos, Quaternion.identity);

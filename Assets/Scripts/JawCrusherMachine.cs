@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class JawCrusherMachine : MonoBehaviour
 {
-    public enum MachineState { Empty, HasRockInFeeder, Finished }
+    public enum MachineState { NoTray, Empty, HasRockInFeeder, Finished }
     
     [Header("Trạng thái")]
     public MachineState currentState = MachineState.Empty;
@@ -28,16 +28,40 @@ public class JawCrusherMachine : MonoBehaviour
             return;
         }
 
-        // 1. Logic Lấy Khay (Khi máy đã dừng và đã nghiền xong)
+        // 1. Logic Lấy Khay ĐÁ VỤN (Khi máy đã dừng và đã nghiền xong)
         if (currentState == MachineState.Finished && player.currentHandObject == null) {
             player.EquipHandItem(ItemType.TrayRockJawCrusher); // Cầm khay đá vụn lên tay
-            currentState = MachineState.Empty; // Trở về trạng thái trống
+            machineAnimator.SetTrigger("TakeTrayRock"); // Animation lấy khay đá vụn
+            currentState = MachineState.NoTray; // Chuyển sang trạng thái không có khay
             UpdateVisuals();
             Debug.Log("Đã lấy khay đá vụn.");
             return;
         }
 
-        // 2. Logic Bỏ Đá (Khi máy trống và tay cầm Granite)
+        // 2. Logic Lấy Khay TRỐNG từ máy (Khi máy có khay trống và tay không cầm gì)
+        if (currentState == MachineState.Empty && player.currentHandObject == null) {
+            player.EquipHandItem(ItemType.TrayJawCrusher); // Cầm khay trống lên tay
+            machineAnimator.SetTrigger("TakeTrayEmpty"); // Animation lấy khay trống (cần tạo trigger này trong Animator)
+            currentState = MachineState.NoTray; // Chuyển sang trạng thái không có khay
+            UpdateVisuals();
+            Debug.Log("Đã lấy khay trống từ máy.");
+            return;
+        }
+
+        // 3. Logic Đặt Khay trống vào máy (Khi không có khay và tay cầm khay trống)
+        if (currentState == MachineState.NoTray && player.currentHandObject != null) {
+            ItemInfo info = player.currentHandObject.GetComponent<ItemInfo>();
+            if (info != null && info.itemType == ItemType.TrayJawCrusher) {
+                player.ClearHand(); // Xóa khay trên tay
+                machineAnimator.SetTrigger("PutTrayEmpty"); // Animation đặt khay trống
+                currentState = MachineState.Empty; // Chuyển về trạng thái có khay trống
+                UpdateVisuals();
+                Debug.Log("Đã đặt khay trống vào máy.");
+                return;
+            }
+        }
+
+        // 4. Logic Bỏ Đá (Khi máy có khay trống và tay cầm Granite)
         if (currentState == MachineState.Empty && player.currentHandObject != null) {
             ItemInfo info = player.currentHandObject.GetComponent<ItemInfo>();
             if (info != null && info.itemType == ItemType.Granite) {
@@ -80,7 +104,7 @@ public class JawCrusherMachine : MonoBehaviour
     }
 
     void UpdateVisuals() {
-        // Khay rỗng hiện khi máy chưa nghiền xong
+        // Khay rỗng chỉ hiện khi máy có khay trống hoặc có đá trong phễu
         if (trayEmpty != null)
             trayEmpty.SetActive(currentState == MachineState.Empty || currentState == MachineState.HasRockInFeeder);
         
