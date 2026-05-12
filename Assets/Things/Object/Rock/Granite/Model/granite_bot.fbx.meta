@@ -3,7 +3,12 @@ guid: cc4d6b735fb0fef428e30bd03588a64d
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Granite_Flour
+    second: {fileID: 2100000, guid: 200e1944ec6190f478d6322645e96574, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

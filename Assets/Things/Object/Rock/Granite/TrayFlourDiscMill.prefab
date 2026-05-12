@@ -10,15 +10,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: cc4d6b735fb0fef428e30bd03588a64d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 31.34776
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: cc4d6b735fb0fef428e30bd03588a64d, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.040533848
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: cc4d6b735fb0fef428e30bd03588a64d, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 8.826424
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: cc4d6b735fb0fef428e30bd03588a64d, type: 3}
       propertyPath: m_LocalRotation.w
@@ -51,6 +51,10 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: cc4d6b735fb0fef428e30bd03588a64d, type: 3}
       propertyPath: m_Name
       value: TrayFlourDiscMill
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: cc4d6b735fb0fef428e30bd03588a64d, type: 3}
+      propertyPath: m_TagString
+      value: PickupItem
       objectReference: {fileID: 0}
     - target: {fileID: 8442510506162454399, guid: cc4d6b735fb0fef428e30bd03588a64d, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -97,7 +101,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 9160481875273085017}
   serializedVersion: 5
-  m_Mass: 1
+  m_Mass: 5
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}

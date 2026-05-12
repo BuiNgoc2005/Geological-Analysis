@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 public class JawCrusherMachine : MonoBehaviour
 {
@@ -6,15 +7,19 @@ public class JawCrusherMachine : MonoBehaviour
     
     [Header("Trạng thái")]
     public MachineState currentState = MachineState.Empty;
-    public bool isRunning = false; // Máy đang chạy hay không
+    private bool isRunning = false; // Máy đang chạy hay không
 
     [Header("Các vật thể hiển thị")]
-    public GameObject trayEmpty;       // Khay rỗng dưới gầm
-    public GameObject trayCrushed;     // Khay đá vụn dưới gầm
+    public GameObject TrayEmpty;       // Khay rỗng dưới gầm
+    public GameObject TrayRock;        // Khay đá vụn dưới gầm
     public GameObject rockInFeeder;    // Viên đá to ở phễu trên
 
     [Header("Cấu hình khác")]
     public Animator machineAnimator;
+
+    // Biến tạm để lưu thông tin cho Animation Event
+    private PlayerInteract tempPlayer;
+    private ItemType tempItemType;
 
     void Start() {
         UpdateVisuals();
@@ -30,21 +35,23 @@ public class JawCrusherMachine : MonoBehaviour
 
         // 1. Logic Lấy Khay ĐÁ VỤN (Khi máy đã dừng và đã nghiền xong)
         if (currentState == MachineState.Finished && player.currentHandObject == null) {
-            player.EquipHandItem(ItemType.TrayRockJawCrusher); // Cầm khay đá vụn lên tay
-            machineAnimator.SetTrigger("TakeTrayRock"); // Animation lấy khay đá vụn
+            tempPlayer = player; // Lưu tạm player
+            tempItemType = ItemType.TrayRockJawCrusher; // Lưu tạm loại item
+            machineAnimator.SetTrigger("TakeTrayRock"); // Animation sẽ gọi OnAnimationTakeTray()
             currentState = MachineState.NoTray; // Chuyển sang trạng thái không có khay
-            UpdateVisuals();
-            Debug.Log("Đã lấy khay đá vụn.");
+            //UpdateVisuals();
+            Debug.Log("Đang lấy khay đá vụn...");
             return;
         }
 
         // 2. Logic Lấy Khay TRỐNG từ máy (Khi máy có khay trống và tay không cầm gì)
         if (currentState == MachineState.Empty && player.currentHandObject == null) {
-            player.EquipHandItem(ItemType.TrayJawCrusher); // Cầm khay trống lên tay
-            machineAnimator.SetTrigger("TakeTrayEmpty"); // Animation lấy khay trống (cần tạo trigger này trong Animator)
+            tempPlayer = player;
+            tempItemType = ItemType.TrayJawCrusher;
+            machineAnimator.SetTrigger("TakeTray"); // Animation sẽ gọi OnAnimationTakeTray()
             currentState = MachineState.NoTray; // Chuyển sang trạng thái không có khay
-            UpdateVisuals();
-            Debug.Log("Đã lấy khay trống từ máy.");
+            //UpdateVisuals();
+            Debug.Log("Đang lấy khay trống từ máy...");
             return;
         }
 
@@ -53,7 +60,7 @@ public class JawCrusherMachine : MonoBehaviour
             ItemInfo info = player.currentHandObject.GetComponent<ItemInfo>();
             if (info != null && info.itemType == ItemType.TrayJawCrusher) {
                 player.ClearHand(); // Xóa khay trên tay
-                machineAnimator.SetTrigger("PutTrayEmpty"); // Animation đặt khay trống
+                machineAnimator.SetTrigger("PutTray"); // Animation đặt khay trống
                 currentState = MachineState.Empty; // Chuyển về trạng thái có khay trống
                 UpdateVisuals();
                 Debug.Log("Đã đặt khay trống vào máy.");
@@ -74,6 +81,23 @@ public class JawCrusherMachine : MonoBehaviour
         }
     }
 
+    // --- HÀM CALLBACK CHO ANIMATION EVENT ---
+    // Thêm Animation Event vào khung hình mà tay chạm vào khay trong Animation Clip
+    public void OnAnimationTakeTray() {
+    if (tempPlayer != null) {
+
+        tempPlayer.EquipHandItem(tempItemType);
+
+        // Chỉ ẩn khay sau khi animation đã chạy tới frame event
+        currentState = MachineState.NoTray;
+        UpdateVisuals();
+
+        Debug.Log($"Item {tempItemType} đã được trang bị qua Animation Event");
+
+        tempPlayer = null;
+    }
+}
+
     // --- TƯƠNG TÁC VỚI NÚT BẤM (START/STOP) ---
     public void ToggleMachine(string buttonName) {
         if (buttonName == "Start") {
@@ -89,6 +113,8 @@ public class JawCrusherMachine : MonoBehaviour
             if (isRunning) {
                 isRunning = false; // Tắt máy
                 machineAnimator.SetTrigger("StopCrush"); // Chạy Anim dừng máy
+                currentState = MachineState.Finished;
+                UpdateVisuals();
                 Debug.Log("Máy đã dừng. Giờ có thể lấy khay.");
             }
         }
@@ -105,12 +131,12 @@ public class JawCrusherMachine : MonoBehaviour
 
     void UpdateVisuals() {
         // Khay rỗng chỉ hiện khi máy có khay trống hoặc có đá trong phễu
-        if (trayEmpty != null)
-            trayEmpty.SetActive(currentState == MachineState.Empty || currentState == MachineState.HasRockInFeeder);
+        if (TrayEmpty != null)
+            TrayEmpty.SetActive(currentState == MachineState.Empty || currentState == MachineState.HasRockInFeeder);
         
         // Khay đá vụn hiện khi trạng thái là Finished
-        if (trayCrushed != null)
-            trayCrushed.SetActive(currentState == MachineState.Finished);
+        if (TrayRock != null)
+            TrayRock.SetActive(currentState == MachineState.Finished);
 
         // Viên đá to ở phễu hiện khi vừa bỏ vào
         if (rockInFeeder != null)

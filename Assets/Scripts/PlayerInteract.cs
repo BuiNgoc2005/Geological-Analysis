@@ -9,13 +9,12 @@ public class PlayerInteract : MonoBehaviour
     [Header("Kho đồ (Holder)")]
     public Transform holder;
 
-    // Đổi sang public để các Script khác (như JawCrusherMachine) có thể kiểm tra
+    [Header("Trạng thái hiện tại")]
     public GameObject currentHandObject = null;
     public GameObject currentWorldPrefab = null;
 
     void Start()
     {
-        // Tắt tất cả đồ trong tay khi bắt đầu
         foreach (Transform child in holder) child.gameObject.SetActive(false);
         currentHandObject = null;
         currentWorldPrefab = null;
@@ -36,48 +35,39 @@ public class PlayerInteract : MonoBehaviour
 
         if (Physics.Raycast(ray, out hit, interactDistance))
         {
-            // 1. Tương tác với Nút bấm (Start/Stop)
             if (hit.collider.CompareTag("MachineButton"))
             {
                 JawCrusherMachine machine = hit.collider.GetComponentInParent<JawCrusherMachine>();
                 if (machine != null) machine.ToggleMachine(hit.collider.gameObject.name);
-                return; // Xử lý xong nút bấm thì dừng
+                return;
             }
 
-            // 2. Tương tác với Máy nghiền (Thân máy)
             if (hit.collider.CompareTag("JawCrusher"))
             {
                 JawCrusherMachine machine = hit.collider.GetComponent<JawCrusherMachine>();
-                if (machine != null)
-                {
-                    machine.InteractWithMachine(this);
-                    return;
-                }
+                if (machine != null) { machine.InteractWithMachine(this); return; }
             }
 
             if (hit.collider.CompareTag("DiscMill"))
             {
                 DiscMillMachine discMachine = hit.collider.GetComponent<DiscMillMachine>();
-                if (discMachine != null)
-                {
-                    discMachine.InteractWithMachine(this);
-                    return;
-                }
+                if (discMachine != null) { discMachine.InteractWithMachine(this); return; }
             }
 
-            // 3. Tương tác với đồ vật để nhặt (PickupItem)
             if (hit.collider.CompareTag("PickupItem"))
             {
-                ItemInfo itemInfo = hit.collider.GetComponent<ItemInfo>();
-                if (itemInfo != null)
+                ItemInfo targetInfo = hit.collider.GetComponent<ItemInfo>();
+                if (targetInfo != null)
                 {
-                    if (currentHandObject == null) PickUpItem(hit.collider.gameObject, itemInfo);
-                    else SwapItem(hit.collider.gameObject, itemInfo);
+                    // GỌI LOGIC CHUYỂN ĐỔI ĐÁ
+                    if (HandleTrayTransfer(targetInfo, hit.collider.gameObject)) return;
+
+                    if (currentHandObject == null) PickUpItem(hit.collider.gameObject, targetInfo);
+                    else SwapItem(hit.collider.gameObject, targetInfo);
                 }
                 return;
             }
 
-            // 4. Tương tác với bàn để đặt đồ
             if (hit.collider.CompareTag("Table") && currentHandObject != null)
             {
                 PlaceItemOnTable(hit.point);
@@ -85,15 +75,73 @@ public class PlayerInteract : MonoBehaviour
             }
         }
 
-        // 5. Nếu bấm E vào không trung hoặc chỗ không có tag đặc biệt thì Vứt đồ
-        if (currentHandObject != null)
+        if (currentHandObject != null) DropItem();
+    }
+
+    // --- LOGIC ĐỔ ĐÁ (ĐÃ SỬA ĐỂ GỌI REPLACEWORLDITEM) ---
+    bool HandleTrayTransfer(ItemInfo targetInfo, GameObject targetWorldObject)
+    {
+        if (currentHandObject == null) return false;
+        ItemInfo handInfo = currentHandObject.GetComponent<ItemInfo>();
+
+        // Trường hợp: Tay cầm khay Jaw có đá + Nhìn vào khay Disc rỗng trên bàn
+        if (handInfo.itemType == ItemType.TrayRockJawCrusher && targetInfo.itemType == ItemType.TrayDiscMill)
         {
-            DropItem();
+            // 1. Đổi món đồ trên tay thành Khay Jaw Rỗng
+            EquipHandItem(ItemType.TrayJawCrusher);
+
+            ReplaceWorldItem(targetWorldObject, ItemType.TrayRockDiscMill);
+
+            Debug.Log("Đã đổ đá vào khay Disc Mill thành công!");
+            return true;
+        }
+
+        if (handInfo.itemType == ItemType.TrayDiscMill && targetInfo.itemType == ItemType.TrayRockJawCrusher)
+        {
+            // 1. Đổi món đồ trên tay thành Khay Jaw Rỗng
+            EquipHandItem(ItemType.TrayRockDiscMill);
+
+            ReplaceWorldItem(targetWorldObject, ItemType.TrayJawCrusher);
+
+            Debug.Log("Đã lấy đá vào khay Disc Mill thành công!");
+            return true;
+        }
+        
+        return false;
+    }
+
+    // --- HÀM THAY THẾ VẬT THỂ TRÊN THẾ GIỚI ---
+    void ReplaceWorldItem(GameObject oldObject, ItemType newType)
+    {
+        Vector3 pos = oldObject.transform.position;
+        Quaternion rot = oldObject.transform.rotation;
+        
+        // Hủy vật thể cũ (cái khay rỗng)
+        Destroy(oldObject);
+        
+        // Tìm prefab tương ứng trong holder để tạo vật thể mới
+        foreach (Transform t in holder)
+        {
+            ItemInfo info = t.GetComponent<ItemInfo>();
+            if (info != null && info.itemType == newType)
+            {
+                if (info.worldPrefab != null)
+                {
+                    // TẠO RA VẬT THỂ MỚI
+                    GameObject newObj = Instantiate(info.worldPrefab, pos, rot);
+                    
+                    // QUAN TRỌNG: Đảm bảo nó được hiện lên (vì prefab lấy từ holder có thể đang bị ẩn)
+                    newObj.SetActive(true); 
+                    
+                    // Xóa chữ (Clone) nếu muốn gọn hierarchy
+                    newObj.name = info.worldPrefab.name;
+                }
+                break;
+            }
         }
     }
 
-    // --- CÁC HÀM HỖ TRỢ ---
-
+    // --- CÁC HÀM CƠ BẢN KHÁC ---
     public void PickUpItem(GameObject worldObject, ItemInfo targetInfo)
     {
         Destroy(worldObject);
@@ -104,54 +152,31 @@ public class PlayerInteract : MonoBehaviour
     {
         Vector3 oldPos = worldObject.transform.position;
         Quaternion oldRot = worldObject.transform.rotation;
-        
-        // Vứt món đồ cũ ra
         Instantiate(currentWorldPrefab, oldPos, oldRot);
-        
-        // Hủy vật thể trên sàn và cầm món mới lên
         Destroy(worldObject);
         EquipHandItem(targetInfo.itemType);
     }
 
     public void DropItem()
     {
-        if (currentHandObject == null) return;
-
-        if (currentWorldPrefab == null) {
-            Debug.LogWarning("Không thể vứt đồ: currentWorldPrefab là null!");
-            ClearHand(); // Vẫn xóa đồ trên tay để tránh bị kẹt
-            return;
-        }
-
+        if (currentHandObject == null || currentWorldPrefab == null) return;
         Vector3 dropPosition = playerCamera.transform.position + playerCamera.transform.forward * 1.5f;
-        Instantiate(currentWorldPrefab, dropPosition, playerCamera.transform.rotation);
-        
+        GameObject dropped = Instantiate(currentWorldPrefab, dropPosition, playerCamera.transform.rotation);
+        dropped.SetActive(true);
         ClearHand();
     }
 
-    public void ClearHand()
+    public void PlaceItemOnTable(Vector3 hitPoint)
     {
-        if (currentHandObject != null) currentHandObject.SetActive(false);
-        currentHandObject = null;
-        currentWorldPrefab = null;
-    }
-
-    void PlaceItemOnTable(Vector3 hitPoint)
-    {
-        if (currentWorldPrefab == null) {
-            Debug.LogWarning("Không thể đặt đồ lên bàn: currentWorldPrefab là null!");
-            return;
-        }
-        
-        // Sửa 0.05f thành 0.01f hoặc thậm chí là 0 để sát mặt bàn nhất có thể
+        if (currentWorldPrefab == null) return;
         Vector3 placePos = hitPoint + new Vector3(0, 0.01f, 0); 
-        Instantiate(currentWorldPrefab, placePos, Quaternion.identity);
+        GameObject placed = Instantiate(currentWorldPrefab, placePos, Quaternion.identity);
+        placed.SetActive(true);
         ClearHand();
     }
 
     public void EquipHandItem(ItemType type)
     {
-        // Tắt món đồ cũ (nếu có)
         if (currentHandObject != null) currentHandObject.SetActive(false);
 
         foreach (Transform handItem in holder)
@@ -162,8 +187,15 @@ public class PlayerInteract : MonoBehaviour
                 handItem.gameObject.SetActive(true);
                 currentHandObject = handItem.gameObject;
                 currentWorldPrefab = handInfo.worldPrefab;
-                break;
+                return;
             }
         }
+    }
+
+    public void ClearHand()
+    {
+        if (currentHandObject != null) currentHandObject.SetActive(false);
+        currentHandObject = null;
+        currentWorldPrefab = null;
     }
 }
