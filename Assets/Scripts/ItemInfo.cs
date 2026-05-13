@@ -8,7 +8,9 @@ public enum ItemType
     TrayDiscMill,
     TrayRockJawCrusher,
     TrayRockDiscMill,
-    TrayFlourDiscMill
+    TrayFlourDiscMill,
+    XRFContainer,
+    TubeFlour
     // Bạn có thêm đồ gì mới thì cứ phẩy rồi ghi thêm vào đây
 }
 

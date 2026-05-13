@@ -22,9 +22,43 @@ public class PlayerInteract : MonoBehaviour
 
     void Update()
     {
+        // E để tương tác vật lý
         if (Input.GetKeyDown(KeyCode.E))
         {
             PerformInteract();
+        }
+
+        // Click trái để mở UI XRF
+        if (Input.GetMouseButtonDown(0))
+        {
+            TryOpenXRFUI();
+        }
+    }
+
+
+    void TryOpenXRFUI()
+    {
+        Ray ray = new Ray(
+            playerCamera.transform.position,
+            playerCamera.transform.forward
+        );
+
+        RaycastHit hit;
+
+        if (Physics.Raycast(ray, out hit, interactDistance))
+        {
+            if (hit.collider.CompareTag("XRFMachine"))
+            {
+                XRFUI ui =
+                    hit.collider.GetComponentInParent<XRFUI>();
+
+                if (ui != null)
+                {
+                    ui.OpenUI();
+
+                    Debug.Log("OPEN XRF UI");
+                }
+            }
         }
     }
 
@@ -35,6 +69,42 @@ public class PlayerInteract : MonoBehaviour
 
         if (Physics.Raycast(ray, out hit, interactDistance))
         {
+            // XRF MACHINE
+            // XRF MACHINE
+            if (hit.collider.CompareTag("XRFMachine"))
+            {
+                XRFMachine xrf = hit.collider.GetComponent<XRFMachine>();
+
+                if (xrf != null)
+                {
+                    // Nếu đang cầm đồ
+                    if (currentHandObject != null)
+                    {
+                        ItemInfo handInfo =
+                            currentHandObject.GetComponent<ItemInfo>();
+
+                        // Nếu đang cầm TubeFlour
+                        if (handInfo != null &&
+                            handInfo.itemType == ItemType.TubeFlour)
+                        {
+                            xrf.InsertSample(this);
+                        }
+                        else
+                        {
+                            // Không phải TubeFlour thì mở nắp
+                            xrf.ToggleLid();
+                        }
+                    }
+                    else
+                    {
+                        // Tay trống thì mở nắp
+                        xrf.ToggleLid();
+                    }
+
+                    return;
+                }
+            }
+
             if (hit.collider.CompareTag("MachineButton"))
             {
                 JawCrusherMachine machine = hit.collider.GetComponentInParent<JawCrusherMachine>();
@@ -106,7 +176,34 @@ public class PlayerInteract : MonoBehaviour
             Debug.Log("Đã lấy đá vào khay Disc Mill thành công!");
             return true;
         }
-        
+
+        // Đổ bột từ khay Disc Mill vào lọ XRF
+        if (handInfo.itemType == ItemType.TrayFlourDiscMill &&
+            targetInfo.itemType == ItemType.XRFContainer)
+        {
+            // KHÔNG đổi khay trên tay
+            // vì khay vẫn còn bột
+
+            // Đổi lọ rỗng thành lọ có bột
+            ReplaceWorldItem(targetWorldObject, ItemType.TubeFlour);
+
+            Debug.Log("Đã đổ bột vào lọ XRF!");
+
+            return true;
+        }
+
+        // Đổ bột từ khay Disc Mill vào lọ XRF
+        if (handInfo.itemType == ItemType.TrayFlourDiscMill &&
+            targetInfo.itemType == ItemType.XRFContainer)
+        {
+            Debug.Log("MATCH XRF");
+
+            ReplaceWorldItem(targetWorldObject, ItemType.TubeFlour);
+
+            return true;
+        }
+
+
         return false;
     }
 
